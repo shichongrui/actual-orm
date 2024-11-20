@@ -7,11 +7,18 @@ from .schema import (
     ForeignKeyConstraint,
     UniqueConstraint,
     Index,
+    Enum,
 )
 
+@dataclass
+class EnumAction:
+    type: str
+
+    enum: Enum
+    value: Optional[str] = None
 
 @dataclass
-class Action:
+class TableAction:
     type: str
 
     table: Table
@@ -52,47 +59,80 @@ def create_column_sql(column: Column):
     )
 
 
-def action_to_sql(action: Action) -> str:
-    match action.type:
-        case "DROP_TABLE":
-            return f"DROP TABLE {action.table.name}"
-        case "CREATE_TABLE":
-            columns_sql = ", ".join(
-                [create_column_sql(column) for column in action.table.columns]
-            )
-            return f"CREATE TABLE {action.table.name} ({columns_sql})"
-        case "CREATE_INDEX":
-            return f"CREATE{" UNIQUE" if action.index.type == 'unique' else ""} INDEX {action.index.name} ON {action.table.name} ({",".join(action.index.columns)})"
-        case "DROP_INDEX":
-            return f"DROP INDEX {action.index.name}"
-        case "DROP_COLUMN":
-            return f"ALTER TABLE {action.table.name} DROP COLUMN {action.column.name}"
-        case "CREATE_COLUMN":
-            return f"ALTER TABLE {action.table.name} ADD COLUMN {create_column_sql(action.column)}"
-        case "CHANGE_DATA_TYPE":
-            old_column_sql = f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} TYPE {action.column.data_type}"
-            if action.column.data_type == "uuid":
-                old_column_sql += f" USING {action.column.name}::uuid"
-            return old_column_sql
-        case "COLUMN_NULLABLE":
-            return f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} DROP NOT NULL"
+def action_to_sql(action: TableAction | EnumAction) -> str | None:
+    if isinstance(action, EnumAction):
+        match action.type:
+            case "CREATE_ENUM":
+                values_sql = ", ".join([f"'{value}'" for value in action.enum.values])
+                return f"CREATE TYPE {action.enum.name} AS ENUM ({values_sql})"
+            case "DROP_ENUM":
+                return f"DROP TYPE {action.enum.name}"
+            case "ADD_ENUM_VALUE":
+                return f"ALTER TYPE {action.enum.name} ADD VALUE '{action.value}'"
 
-        case "COLUMN_NOT_NULLABLE":
-            return f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} SET NOT NULL"
-        case "COLUMN_DEFAULT":
-            if action.column.default == None:
-                return f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} DROP DEFAULT"
-            else:
-                return f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} SET DEFAULT {action.column.default}"
-        case "ADD_CONSTRAINT":
-            if isinstance(action.constraint, ForeignKeyConstraint):
-                return f"ALTER TABLE {action.table.name} ADD CONSTRAINT fk_{action.column.name} FOREIGN KEY ({action.column.name}) REFERENCES {action.constraint.references}"
-            elif isinstance(action.constraint, UniqueConstraint):
-                return f"ALTER TABLE {action.table.name} ADD CONSTRAINT uq_{action.column.name} UNIQUE ({action.column.name})"
-        case "DROP_CONSTRAINT":
-            if isinstance(action.constraint, ForeignKeyConstraint):
-                return f"ALTER TABLE {action.table.name} DROP CONSTRAINT fk_{action.column.name}"
-            elif isinstance(action.constraint, UniqueConstraint):
-                return f"ALTER TABLE {action.table.name} DROP CONSTRAINT uq_{action.column.name}"
-        case _:
-            raise ValueError(f"Unknown Action type: {action.type}")
+
+    if isinstance(action, TableAction):
+        match action.type:
+            case "DROP_TABLE":
+                return f"DROP TABLE {action.table.name}"
+            case "CREATE_TABLE":
+                columns_sql = ", ".join(
+                    [create_column_sql(column) for column in action.table.columns]
+                )
+                return f"CREATE TABLE {action.table.name} ({columns_sql})"
+            case "CREATE_INDEX":
+                if action.index == None:
+                    raise Exception("Index was not provided on the action")
+                return f"CREATE{" UNIQUE" if action.index.type == 'unique' else ""} INDEX {action.index.name} ON {action.table.name} ({",".join(action.index.columns)})"
+            case "DROP_INDEX":
+                if action.index == None:
+                    raise Exception("Index was not provided on the action")
+                
+                return f"DROP INDEX {action.index.name}"
+            case "DROP_COLUMN":
+                if action.column == None:
+                    raise Exception("Column was not provided on the action")
+                return f"ALTER TABLE {action.table.name} DROP COLUMN {action.column.name}"
+            case "CREATE_COLUMN":
+                if action.column == None:
+                    raise Exception("Column was not provided on the action")
+                return f"ALTER TABLE {action.table.name} ADD COLUMN {create_column_sql(action.column)}"
+            case "CHANGE_DATA_TYPE":
+                if action.column == None:
+                    raise Exception("Column was not provided on the action")
+                old_column_sql = f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} TYPE {action.column.data_type}"
+                if action.column.data_type == "uuid":
+                    old_column_sql += f" USING {action.column.name}::uuid"
+                return old_column_sql
+            case "COLUMN_NULLABLE":
+                if action.column == None:
+                    raise Exception("Column was not provided on the action")
+                return f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} DROP NOT NULL"
+
+            case "COLUMN_NOT_NULLABLE":
+                if action.column == None:
+                    raise Exception("Column was not provided on the action")
+                return f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} SET NOT NULL"
+            case "COLUMN_DEFAULT":
+                if action.column == None:
+                    raise Exception("Column was not provided on the action")
+                if action.column.default == None:
+                    return f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} DROP DEFAULT"
+                else:
+                    return f"ALTER TABLE {action.table.name} ALTER COLUMN {action.column.name} SET DEFAULT {action.column.default}"
+            case "ADD_CONSTRAINT":
+                if action.column == None:
+                    raise Exception("Column was not provided on the action")
+                if isinstance(action.constraint, ForeignKeyConstraint):
+                    return f"ALTER TABLE {action.table.name} ADD CONSTRAINT fk_{action.column.name} FOREIGN KEY ({action.column.name}) REFERENCES {action.constraint.references}"
+                elif isinstance(action.constraint, UniqueConstraint):
+                    return f"ALTER TABLE {action.table.name} ADD CONSTRAINT uq_{action.column.name} UNIQUE ({action.column.name})"
+            case "DROP_CONSTRAINT":
+                if action.column == None:
+                    raise Exception("Column was not provided on the action")
+                if isinstance(action.constraint, ForeignKeyConstraint):
+                    return f"ALTER TABLE {action.table.name} DROP CONSTRAINT fk_{action.column.name}"
+                elif isinstance(action.constraint, UniqueConstraint):
+                    return f"ALTER TABLE {action.table.name} DROP CONSTRAINT uq_{action.column.name}"
+            case _:
+                raise ValueError(f"Unknown Action type: {action.type}")

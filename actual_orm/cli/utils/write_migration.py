@@ -13,6 +13,6 @@ def write_migration(sql: List[str]):
 from asyncpg import Connection
 
 async def migrate(conn: Connection):
-    {'\n    '.join([f"await conn.execute('{statement}')" for statement in sql])}
+    {'\n    '.join([f"await conn.execute(\"{statement}\")" for statement in sql])}
                    
 """)

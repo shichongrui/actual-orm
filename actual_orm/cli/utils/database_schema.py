@@ -1,9 +1,12 @@
 import asyncpg
-from .schema import Table, Column, Index, ForeignKeyConstraint, UniqueConstraint
+from .schema import Table, Column, Index, ForeignKeyConstraint, UniqueConstraint, Enum
 
 
 async def get_database_schema(database_url):
     conn = await asyncpg.connect(database_url)
+
+    tables = []
+    enums = []
 
     tables_result = await conn.fetch(
         """
@@ -13,7 +16,6 @@ async def get_database_schema(database_url):
     """
     )
 
-    tables = []
     for table_result in tables_result:
         table_name = table_result["table_name"]
 
@@ -137,5 +139,26 @@ AND
 
         tables.append(Table(name=table_name, columns=columns, indexes=indexes))
 
+    enums_result = await conn.fetch("""
+        SELECT
+            n.nspname AS schema_name,
+            t.typname AS enum_name,
+            e.enumlabel AS enum_value
+        FROM
+            pg_type t
+        JOIN
+            pg_enum e ON t.oid = e.enumtypid
+        JOIN
+            pg_namespace n ON t.typnamespace = n.oid
+        ORDER BY
+            schema_name, enum_name, e.enumsortorder;                             
+    """)
+    enums_lookup = {}
+    for result in enums_result:
+        enum = enums_lookup.get(result['enum_name'], Enum(name=result['enum_name'], values=[]))
+        enum.values.append(result['enum_value'])
+        enums_lookup[result['enum_name']] = enum
+    enums = enums_lookup.values()
+
     await conn.close()
-    return tables
+    return tables, enums

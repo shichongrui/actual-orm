@@ -1,4 +1,5 @@
 from typing import Annotated, TypedDict, Optional
+from enum import StrEnum, auto
 from dataclasses import dataclass
 from datetime import datetime
 from actual_orm.model import Model
@@ -23,6 +24,12 @@ class Update(TypedDict, total=False):
     created_at: datetime
     updated_at: datetime
 
+class ContentType(StrEnum):
+    markdown = auto()
+    text = auto()
+    vtt = auto()
+    pdf = auto()
+
 @dataclass
 class Content(Model):
     __table_name__ = "content"
@@ -30,6 +37,7 @@ class Content(Model):
     id: Annotated[int, db.primary_key(), db.auto_increment()]
     title: str
     external_id: str
+    type: ContentType
     hash: Annotated[str, db.data_types.varchar(64)]
     full_text: str
     context_id: str

@@ -36,3 +36,8 @@ class Table:
     name: str
     columns: List[Column]
     indexes: List[Index]
+
+@dataclass
+class Enum:
+    name: str
+    values: List[str]

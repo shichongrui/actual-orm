@@ -1,7 +1,7 @@
 import click
 from ..utils.get_database_url import get_database_url
 from ..utils.get_models import get_models
-from ..utils.model_schema import get_model_schema
+from ..utils.model_schema import get_models_schema
 from ..utils.database_schema import get_database_schema
 from ..utils.schema_differ import get_schema_diff_actions
 from ..utils.action import action_to_sql
@@ -17,9 +17,7 @@ async def migrate_dev_command():
     await run_migrations(database_url)
 
     database_schema = await get_database_schema(database_url)
-
-    models = get_models()
-    model_schema = [get_model_schema(model) for model in models]
+    model_schema = get_models_schema()
 
     actions = get_schema_diff_actions(model_schema=model_schema, database_schema=database_schema)
 
@@ -33,5 +31,5 @@ async def migrate_dev_command():
     for sql in actions_sql:
         print(sql)
 
-    write_migration(actions_sql)
+    write_migration([sql for sql in actions_sql if sql != None])
     await run_migrations(database_url)

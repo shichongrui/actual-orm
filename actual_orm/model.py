@@ -13,7 +13,7 @@ from typing import (
 )
 import re
 from asyncpg import Connection
-from .query_builder.conditions import Condition, LogicalCondition
+from .query_builder.conditions import Condition, LogicalCondition, AndCondition
 from .query_builder.query_builder import QueryBuilder, OrderByDirection
 from .dot_dict import DotDict
 from .query_builder.model_column import ModelColumn
@@ -36,7 +36,7 @@ T = TypeVar("T", bound="Model")
 
 class MetaModel(type):
     def __init__(cls: Type["Model"], name, bases, dict):
-        super().__init__(name, bases, dict) #type: ignore
+        super().__init__(name, bases, dict)  # type: ignore
 
         cls.columns: DotDict[ModelColumn] = DotDict()
         for name in cls.__annotations__.keys():
@@ -130,13 +130,13 @@ class Model(Generic[CreateT, UpdateT], metaclass=MetaModel):
     @classmethod
     async def get(
         cls: Type[T],
-        condition: LogicalCondition,
+        *conditions: LogicalCondition,
         conn: Connection | None = None,
     ) -> T | None:
         result: List[T] = (
             await QueryBuilder()
             .select(cls.__table_name__)
-            .where(condition)
+            .where(AndCondition(*list(conditions)))
             .limit(1)
             .return_as(cls)
             .run(conn)
@@ -170,9 +170,7 @@ class Model(Generic[CreateT, UpdateT], metaclass=MetaModel):
         return result
 
     @classmethod
-    async def create(
-        cls: Type[T], data: CreateT, conn: Connection | None = None
-    ) -> T:
+    async def create(cls: Type[T], data: CreateT, conn: Connection | None = None) -> T:
         results: List[T] = (
             await QueryBuilder()
             .insert(cls.__table_name__, dict(data))
@@ -194,7 +192,6 @@ class Model(Generic[CreateT, UpdateT], metaclass=MetaModel):
         )
         return results
 
-
     @classmethod
     async def update(
         cls: Type[T],
@@ -210,26 +207,45 @@ class Model(Generic[CreateT, UpdateT], metaclass=MetaModel):
             .run(conn)
         )
         return result
-    
+
     @classmethod
     async def upsert(
         cls: Type[T],
         where: LogicalCondition,
         create: CreateT,
         update: UpdateT,
-        conn: Connection | None = None
+        conn: Connection | None = None,
     ) -> T:
-        existing = await QueryBuilder().select(cls.__table_name__).where(where).return_as(cls).run(conn)
+        existing = (
+            await QueryBuilder()
+            .select(cls.__table_name__)
+            .where(where)
+            .return_as(cls)
+            .run(conn)
+        )
         if len(existing) > 1:
             raise Exception("Where condition for upsert was not unique")
-        
+
         if len(existing) == 1:
-            result = await QueryBuilder().update(cls.__table_name__, data=dict(update)).where(where).return_as(cls).run()
+            if len(update.keys()) == 0:
+                return existing[0]
+            
+            result = (
+                await QueryBuilder()
+                .update(cls.__table_name__, data=dict(update))
+                .where(where)
+                .return_as(cls)
+                .run()
+            )
             return result[0]
         else:
-            result = await QueryBuilder().insert(cls.__table_name__, data=dict(create)).return_as(cls).run()
+            result = (
+                await QueryBuilder()
+                .insert(cls.__table_name__, data=dict(create))
+                .return_as(cls)
+                .run()
+            )
             return result[0]
-
 
     async def update_self(self: T, conn: Connection | None = None) -> T:
         primary_key_column = self.__class__._get_primary_key()
@@ -252,9 +268,11 @@ class Model(Generic[CreateT, UpdateT], metaclass=MetaModel):
 
     @classmethod
     async def delete(
-        cls: Type[T], condition: LogicalCondition, conn: Connection | None = None
+        cls: Type[T], *conditions: LogicalCondition, conn: Connection | None = None
     ):
-        await QueryBuilder().delete(cls.__table_name__).where(condition).run()
+        await QueryBuilder().delete(cls.__table_name__).where(
+            AndCondition(*list(conditions))
+        ).run()
 
     async def delete_self(self, conn: Connection | None = None):
         primary_key_column = self.__class__._get_primary_key()

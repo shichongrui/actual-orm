@@ -213,7 +213,7 @@ class QueryBuilder(Generic[T]):
 
         if self.return_as_cls != None:
             query += f" RETURNING {", ".join([name for name in self.return_as_cls.__annotations__.keys()])}"
-        print(query)
+
         return convert_named_to_positional(query, parameters)
 
     def update_sql(self):
