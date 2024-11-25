@@ -50,7 +50,7 @@ class QueryBuilder(Generic[T]):
     joins: List[Join]
     conditions: List[LogicalCondition]
     limit_value: Optional[int]
-    order_by_conditions: List[Tuple[ModelColumn, OrderByDirection]]
+    order_by_conditions: List[Tuple[ModelColumn, OrderByDirection] | str]
     return_columns: List[str]
     return_as_cls: Type[T] | None
     data: List[Dict] | Dict | None
@@ -126,7 +126,7 @@ class QueryBuilder(Generic[T]):
         self.limit_value = limit
         return self
 
-    def order_by(self, *columns: Tuple["ModelColumn", OrderByDirection]):
+    def order_by(self, *columns: Tuple["ModelColumn", OrderByDirection] | str):
         self.order_by_conditions += columns
         return self
     
@@ -168,12 +168,14 @@ class QueryBuilder(Generic[T]):
             parameters[limit_param_name] = self.limit_value
         if len(self.order_by_conditions) > 0:
             query += " ORDER BY "
-            query += ", ".join(
-                [
-                    f"{column.table}.{column.name} {direction}"
-                    for column, direction in self.order_by_conditions
-                ]
-            )
+            order_by = []
+            for o in self.order_by_conditions:
+                if isinstance(o, str):
+                    order_by.append(o)
+                else:
+                    column, direction = o
+                    order_by.append(f"{column.table}.{column.name} {direction}")
+            query += ", ".join(order_by)
 
         return convert_named_to_positional(query, parameters)
 

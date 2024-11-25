@@ -17,6 +17,9 @@ def auto_increment():
 def now():
     return "NOW()"
 
+def random():
+    return "RANDOM()"
+
 def default(value: str):
     return {
         "default": value

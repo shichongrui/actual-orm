@@ -1,3 +1,4 @@
+from typing import List, Dict
 import asyncpg
 from .schema import Table, Column, Index, ForeignKeyConstraint, UniqueConstraint, Enum
 
@@ -5,8 +6,8 @@ from .schema import Table, Column, Index, ForeignKeyConstraint, UniqueConstraint
 async def get_database_schema(database_url):
     conn = await asyncpg.connect(database_url)
 
-    tables = []
-    enums = []
+    tables: List[Table] = []
+    enums: List[Enum] = []
 
     tables_result = await conn.fetch(
         """
@@ -153,12 +154,12 @@ AND
         ORDER BY
             schema_name, enum_name, e.enumsortorder;                             
     """)
-    enums_lookup = {}
+    enums_lookup: Dict[str, Enum] = {}
     for result in enums_result:
         enum = enums_lookup.get(result['enum_name'], Enum(name=result['enum_name'], values=[]))
         enum.values.append(result['enum_value'])
         enums_lookup[result['enum_name']] = enum
-    enums = enums_lookup.values()
+    enums = [e for e in enums_lookup.values()]
 
     await conn.close()
     return tables, enums
