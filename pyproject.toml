@@ -2,7 +2,7 @@
 name = "actual-orm"
 version = "1.0.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Matt Sessions <me@matthewsessions.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
