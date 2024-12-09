@@ -132,8 +132,8 @@ def get_model_schema(model: Type[Model]):
         constraints = []
         foreign_key = meta_data.get("foreign_key")
         unique: bool = meta_data.get("unique", False)
-        if isinstance(foreign_key, str):
-            constraints.append(ForeignKeyConstraint(references=foreign_key))
+        if foreign_key != None:
+            constraints.append(ForeignKeyConstraint(references=foreign_key.get("key"), on_delete=foreign_key.get("on_delete")))
         if unique:
             constraints.append(UniqueConstraint())
 

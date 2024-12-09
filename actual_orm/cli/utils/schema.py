@@ -8,6 +8,7 @@ class Constraint:
 @dataclass(eq=True)
 class ForeignKeyConstraint(Constraint):
     references: str
+    on_delete: str | None
 
 @dataclass(eq=True)
 class UniqueConstraint(Constraint):

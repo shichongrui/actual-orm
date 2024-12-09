@@ -29,6 +29,7 @@ class ContentType(StrEnum):
     text = auto()
     vtt = auto()
     pdf = auto()
+    html = auto()
 
 @dataclass
 class Content(Model):
