@@ -33,14 +33,14 @@ def updated_at():
 def cascade():
     return { "on_delete": "CASCADE" }
 
-def foreign_key(references: Model, on_delete: Dict = {}):
+def foreign_key(references: Model, on_delete: Dict | None = None):
     primary_key = next((column_name for column_name, type in references.__annotations__.items() if get_origin(type) is Annotated and {"primary_key": True} in get_args(type)), None)
     if primary_key is None:
         raise Exception(f"No primary key found on table {references.__class__.__name__}")
     return {
         "foreign_key": {
             "key": f"{references.__table_name__}({primary_key})",
-            **on_delete
+            **(on_delete or {})
         }
     }
 
