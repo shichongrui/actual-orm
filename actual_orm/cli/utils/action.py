@@ -51,7 +51,7 @@ def create_column_sql(column: Column):
         + (" PRIMARY KEY" if column.primary_key else "")
         + (f" DEFAULT {column.default}" if column.default else "")
         + (f" UNIQUE" if is_unique else "")
-        (
+        +(
             f" REFERENCES {foreign_key_constraint.references} ON DELETE {foreign_key_constraint.on_delete}"
             if foreign_key_constraint and foreign_key_constraint.on_delete
             else ""
