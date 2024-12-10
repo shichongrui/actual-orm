@@ -24,4 +24,4 @@ class ContentOwnerAssociation(Model[Create, Update]):
 
     id: Annotated[int, db.primary_key(), db.auto_increment()]
     owner_id: Annotated[int, db.foreign_key(Owner)]
-    content_id: Annotated[int, db.foreign_key(Content)]
+    content_id: Annotated[int, db.foreign_key(Content, on_delete=db.cascade())]

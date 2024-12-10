@@ -36,6 +36,10 @@ def get_schema_diff_actions(model_schema: Tuple[List[Table], List[Enum]], databa
             # Find indexes that don't exist in the database
             for index in model_table.indexes:
                 actions.append(TableAction(type="CREATE_INDEX", table=model_table, index=index))
+            
+            for column in model_table.columns:
+                for constraint in column.constraints:
+                    actions.append(TableAction(type="ADD_CONSTRAINT", table=model_table, column=column, constraint=constraint))
     
     # Look to see if any tables exist in the database_tables that do not exist in the model_tables
     # And thus need to be dropped
@@ -77,6 +81,9 @@ def get_schema_diff_actions(model_schema: Tuple[List[Table], List[Enum]], databa
                 actions.append(
                     TableAction(type="CREATE_COLUMN", table=table, column=model_column)
                 )
+
+                for constraint in model_column.constraints:
+                    actions.append(TableAction(type="ADD_CONSTRAINT", table=table, column=model_column, constraint=constraint))
 
         # Figure out how a column changed from what is in the DB
         for column in table.columns:
