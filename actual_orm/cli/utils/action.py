@@ -118,18 +118,18 @@ def action_to_sql(action: TableAction | EnumAction) -> str | None:
                 if action.column == None:
                     raise Exception("Column was not provided on the action")
                 if isinstance(action.constraint, ForeignKeyConstraint):
-                    sql = f"ALTER TABLE {action.table.name} ADD CONSTRAINT fk_{action.column.name} FOREIGN KEY ({action.column.name}) REFERENCES {action.constraint.references}"
+                    sql = f"ALTER TABLE {action.table.name} ADD CONSTRAINT fk_{action.table.name}_{action.column.name} FOREIGN KEY ({action.column.name}) REFERENCES {action.constraint.references}"
                     if action.constraint.on_delete != None:
                         sql += f" ON DELETE {action.constraint.on_delete}"
                     return sql
                 elif isinstance(action.constraint, UniqueConstraint):
-                    return f"ALTER TABLE {action.table.name} ADD CONSTRAINT uq_{action.column.name} UNIQUE ({action.column.name})"
+                    return f"ALTER TABLE {action.table.name} ADD CONSTRAINT uq_{action.table.name}_{action.column.name} UNIQUE ({action.column.name})"
             case "DROP_CONSTRAINT":
                 if action.column == None:
                     raise Exception("Column was not provided on the action")
                 if isinstance(action.constraint, ForeignKeyConstraint):
-                    return f"ALTER TABLE {action.table.name} DROP CONSTRAINT fk_{action.column.name}"
+                    return f"ALTER TABLE {action.table.name} DROP CONSTRAINT fk_{action.table.name}_{action.column.name}"
                 elif isinstance(action.constraint, UniqueConstraint):
-                    return f"ALTER TABLE {action.table.name} DROP CONSTRAINT uq_{action.column.name}"
+                    return f"ALTER TABLE {action.table.name} DROP CONSTRAINT uq_{action.table.name}_{action.column.name}"
             case _:
                 raise ValueError(f"Unknown Action type: {action.type}")
